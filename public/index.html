@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Repo Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary: #0d9488; --primary-dark: #0f766e;
+    --text: #0f172a; --text-light: #64748b; --border: #e2e8f0; --surface: #ffffff;
+    --shadow: 0 2px 8px rgba(15,23,42,0.05), 0 10px 26px rgba(15,23,42,0.07);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(160deg, #f0fdfa 0%, #f4f6f9 55%, #eef2ff 100%);
+    color: var(--text); padding: 40px 20px 70px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .subtitle { color: var(--text-light); font-size: 0.92rem; margin: 0 0 24px; }
+
+  .card {
+    background: var(--surface); border-radius: 16px; box-shadow: var(--shadow);
+    border: 1px solid rgba(15,23,42,0.05); padding: 22px; margin-bottom: 20px;
+  }
+  .add-row, .filter-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .filter-card { padding: 14px 18px; }
+  input[type="text"], select {
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
+    font-family: inherit; font-size: 0.88rem; background: #fff;
+  }
+  #repoInput { flex: 2; min-width: 220px; }
+  #tagsInput { flex: 1; min-width: 150px; }
+  #filterSearch { flex: 2; min-width: 180px; }
+  #filterTag, #filterSort { flex: 1; min-width: 140px; }
+  .result-count { color: var(--text-light); font-size: 0.8rem; margin: 10px 2px 12px; }
+  button {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; border: none;
+    padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 0.88rem; cursor: pointer;
+    font-family: inherit; box-shadow: 0 4px 14px rgba(13,148,136,0.3);
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary { background: none; color: var(--text-light); box-shadow: none; border: 1px solid var(--border); padding: 7px 12px; font-size: 0.78rem; }
+  button.danger { background: linear-gradient(135deg, #dc2626, #b91c1c); box-shadow: 0 4px 14px rgba(220,38,38,0.25); padding: 7px 14px; font-size: 0.78rem; }
+
+  .status-msg { font-size: 0.85rem; margin-top: 10px; }
+  .status-msg.error { color: #dc2626; }
+  .status-msg.ok { color: #0f766e; }
+
+  .repo-list { display: flex; flex-direction: column; gap: 10px; }
+  .repo-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .repo-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; flex-wrap: wrap; }
+  .repo-name { font-weight: 700; font-size: 1rem; }
+  .repo-name a { color: var(--text); text-decoration: none; }
+  .repo-name a:hover { color: var(--primary); }
+  .repo-desc { color: var(--text-light); font-size: 0.85rem; margin-top: 4px; line-height: 1.5; }
+  .repo-stats { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-light); }
+  .repo-stats span { display: flex; align-items: center; gap: 4px; }
+  .repo-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .tag {
+    background: #ccfbf1; color: #0f766e; font-size: 0.7rem; font-weight: 700; padding: 2px 9px;
+    border-radius: 999px;
+  }
+  .repo-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .list-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .view-toggle { display: flex; gap: 6px; }
+  .view-toggle button { padding: 7px 14px; font-size: 0.78rem; background: none; color: var(--text-light); box-shadow: none; border: 1px solid var(--border); }
+  .view-toggle button.active { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 4px 14px rgba(13,148,136,0.3); border-color: transparent; }
+
+  .table-wrap { overflow-x: auto; border-radius: 14px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  table.repo-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
+  table.repo-table th, table.repo-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.repo-table tr:last-child td { border-bottom: none; }
+  table.repo-table th { background: #f8fafc; font-weight: 700; color: var(--text-light); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  table.repo-table td.repo-name-cell a { color: var(--text); font-weight: 700; text-decoration: none; }
+  table.repo-table td.repo-name-cell a:hover { color: var(--primary); }
+  table.repo-table .repo-desc { font-size: 0.78rem; }
+
+  .empty { text-align: center; color: var(--text-light); padding: 40px 0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⭐ Repo Tracker</h1>
+  <p class="subtitle">Save GitHub repos you want to keep an eye on — stars, language, and activity pulled live from GitHub.</p>
+
+  <div class="card">
+    <div class="filter-row">
+      <input type="text" id="filterSearch" placeholder="🔍 Filter your saved repos..." />
+      <select id="filterTag">
+        <option value="">All tags</option>
+      </select>
+      <select id="filterSort">
+        <option value="added">Recently added</option>
+        <option value="stars">Most stars</option>
+        <option value="updated">Recently updated</option>
+        <option value="name">Name (A–Z)</option>
+      </select>
+    </div>
+    <div class="add-row" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+      <input type="text" id="repoInput" placeholder="Paste a GitHub URL/owner-repo to add, or type a keyword to search" />
+      <input type="text" id="tagsInput" placeholder="Tags (optional)" />
+      <button id="addBtn">Add</button>
+    </div>
+    <div id="addStatus" class="status-msg"></div>
+    <div id="searchResults" class="repo-list" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="list-header">
+    <div id="resultCount" class="result-count" style="margin:0;"></div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span id="refreshAllStatus" class="status-msg" style="margin:0;"></span>
+      <button id="refreshAllBtn" class="secondary" type="button">Refresh All</button>
+      <div class="view-toggle">
+        <button id="viewCardsBtn" type="button">Cards</button>
+        <button id="viewTableBtn" type="button">Table</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="repoList" class="repo-list"></div>
+  <div id="repoTableWrap" class="table-wrap" style="display:none;">
+    <table class="repo-table">
+      <thead>
+        <tr><th>Repo</th><th>Stars</th><th>Language</th><th>Tags</th><th>Updated</th><th></th></tr>
+      </thead>
+      <tbody id="repoTableBody"></tbody>
+    </table>
+  </div>
+  <div id="emptyState" class="empty" style="display:none;">No repos saved yet — add one above.</div>
+</div>
+
+<script>
+const repoInput = document.getElementById('repoInput');
+const tagsInput = document.getElementById('tagsInput');
+const addBtn = document.getElementById('addBtn');
+const addStatus = document.getElementById('addStatus');
+const repoList = document.getElementById('repoList');
+const emptyState = document.getElementById('emptyState');
+const filterSearch = document.getElementById('filterSearch');
+const filterTag = document.getElementById('filterTag');
+const filterSort = document.getElementById('filterSort');
+const resultCount = document.getElementById('resultCount');
+const searchResults = document.getElementById('searchResults');
+const repoTableWrap = document.getElementById('repoTableWrap');
+const repoTableBody = document.getElementById('repoTableBody');
+const viewCardsBtn = document.getElementById('viewCardsBtn');
+const viewTableBtn = document.getElementById('viewTableBtn');
+const refreshAllBtn = document.getElementById('refreshAllBtn');
+const refreshAllStatus = document.getElementById('refreshAllStatus');
+
+let currentView = localStorage.getItem('repoTrackerView') === 'table' ? 'table' : 'cards';
+
+let allRepos = [];
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function timeAgo(iso) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day ago';
+  if (days < 30) return `${days} days ago`;
+  if (days < 365) return `${Math.floor(days / 30)} mo ago`;
+  return `${Math.floor(days / 365)} yr ago`;
+}
+
+function renderRepos(repos) {
+  if (!repos.length) {
+    repoList.innerHTML = '';
+    repoTableBody.innerHTML = '';
+    repoList.style.display = 'none';
+    repoTableWrap.style.display = 'none';
+    emptyState.textContent = allRepos.length
+      ? 'No repos match that filter.'
+      : 'No repos saved yet — add one above.';
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  if (currentView === 'table') {
+    repoList.style.display = 'none';
+    repoTableWrap.style.display = 'block';
+    renderTable(repos);
+  } else {
+    repoTableWrap.style.display = 'none';
+    repoList.style.display = 'flex';
+    renderCards(repos);
+  }
+}
+
+function renderCards(repos) {
+  repoList.innerHTML = repos.map(r => `
+    <div class="repo-card">
+      <div class="repo-top">
+        <div>
+          <div class="repo-name"><a href="${r.url}" target="_blank" rel="noopener">${escapeHtml(r.fullName)}</a></div>
+          ${r.description ? `<div class="repo-desc">${escapeHtml(r.description)}</div>` : ''}
+        </div>
+        <div class="repo-actions">
+          <button class="secondary" onclick="refreshRepo('${r.id}')">Refresh</button>
+          <button class="danger" onclick="deleteRepo('${r.id}')">Remove</button>
+        </div>
+      </div>
+      <div class="repo-stats">
+        <span>⭐ ${r.stars?.toLocaleString() ?? 0}</span>
+        <span>🍴 ${r.forks?.toLocaleString() ?? 0}</span>
+        ${r.language ? `<span>🔵 ${escapeHtml(r.language)}</span>` : ''}
+        ${r.license ? `<span>📄 ${escapeHtml(r.license)}</span>` : ''}
+        <span>Updated ${timeAgo(r.updatedAt)}</span>
+      </div>
+      ${r.tags?.length ? `<div class="repo-tags">${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderTable(repos) {
+  repoTableBody.innerHTML = repos.map(r => `
+    <tr>
+      <td class="repo-name-cell">
+        <a href="${r.url}" target="_blank" rel="noopener">${escapeHtml(r.fullName)}</a>
+        ${r.description ? `<div class="repo-desc">${escapeHtml(r.description)}</div>` : ''}
+      </td>
+      <td>⭐ ${r.stars?.toLocaleString() ?? 0}</td>
+      <td>${r.language ? escapeHtml(r.language) : '—'}</td>
+      <td>${r.tags?.length ? r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ') : '—'}</td>
+      <td>${timeAgo(r.updatedAt)}</td>
+      <td style="white-space:nowrap;">
+        <button class="secondary" onclick="refreshRepo('${r.id}')">↻</button>
+        <button class="danger" onclick="deleteRepo('${r.id}')">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function setView(view) {
+  currentView = view;
+  localStorage.setItem('repoTrackerView', view);
+  viewCardsBtn.classList.toggle('active', view === 'cards');
+  viewTableBtn.classList.toggle('active', view === 'table');
+  applyFilters();
+}
+
+function populateTagOptions() {
+  const tags = [...new Set(allRepos.flatMap(r => r.tags || []))].sort();
+  const current = filterTag.value;
+  filterTag.innerHTML = '<option value="">All tags</option>' +
+    tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  if (tags.includes(current)) filterTag.value = current;
+}
+
+function applyFilters() {
+  const q = filterSearch.value.trim().toLowerCase();
+  const tag = filterTag.value;
+  const sort = filterSort.value;
+
+  let filtered = allRepos.filter(r => {
+    const matchesQuery = !q ||
+      r.fullName.toLowerCase().includes(q) ||
+      (r.description || '').toLowerCase().includes(q) ||
+      (r.language || '').toLowerCase().includes(q);
+    const matchesTag = !tag || (r.tags || []).includes(tag);
+    return matchesQuery && matchesTag;
+  });
+
+  filtered = filtered.slice().sort((a, b) => {
+    if (sort === 'stars') return (b.stars || 0) - (a.stars || 0);
+    if (sort === 'updated') return new Date(b.updatedAt) - new Date(a.updatedAt);
+    if (sort === 'name') return a.fullName.localeCompare(b.fullName);
+    return new Date(b.addedAt) - new Date(a.addedAt); // 'added' default
+  });
+
+  resultCount.textContent = allRepos.length
+    ? `Showing ${filtered.length} of ${allRepos.length} repo${allRepos.length === 1 ? '' : 's'}`
+    : '';
+  renderRepos(filtered);
+}
+
+async function loadRepos() {
+  const res = await fetch('/api/repos');
+  allRepos = await res.json();
+  populateTagOptions();
+  applyFilters();
+}
+
+async function deleteRepo(id) {
+  if (!confirm('Remove this repo from your list?')) return;
+  await fetch(`/api/repos/${id}`, { method: 'DELETE' });
+  loadRepos();
+}
+
+async function refreshRepo(id) {
+  await fetch(`/api/repos/${id}/refresh`, { method: 'POST' });
+  loadRepos();
+}
+
+// One box handles both cases: a URL/owner-repo adds directly; anything else
+// falls back to a GitHub keyword search so you can pick from the results.
+addBtn.addEventListener('click', async () => {
+  const value = repoInput.value.trim();
+  if (!value) return;
+
+  addStatus.textContent = 'Working...';
+  addStatus.className = 'status-msg';
+  searchResults.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/repos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: value, tags: tagsInput.value.trim() })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      addStatus.textContent = `Added ${data.fullName}`;
+      addStatus.className = 'status-msg ok';
+      repoInput.value = '';
+      loadRepos();
+      return;
+    }
+
+    if (data.error !== 'Could not parse a GitHub repo from that input') {
+      throw new Error(data.error || 'Failed to add repo');
+    }
+
+    addStatus.textContent = 'Searching GitHub...';
+    const searchRes = await fetch(`/api/github-search?q=${encodeURIComponent(value)}`);
+    const results = await searchRes.json();
+    if (!searchRes.ok) throw new Error(results.error || 'Search failed');
+
+    addStatus.textContent = results.length ? 'Pick a repo to add:' : 'No matching repos found.';
+    addStatus.className = 'status-msg';
+    renderSearchResults(results);
+  } catch (err) {
+    addStatus.textContent = err.message;
+    addStatus.className = 'status-msg error';
+  }
+});
+
+function renderSearchResults(results) {
+  if (!results.length) {
+    searchResults.innerHTML = '<div class="empty">No matching repos found.</div>';
+    return;
+  }
+  searchResults.innerHTML = results.map(r => `
+    <div class="repo-card">
+      <div class="repo-top">
+        <div>
+          <div class="repo-name"><a href="${r.url}" target="_blank" rel="noopener">${escapeHtml(r.fullName)}</a></div>
+          ${r.description ? `<div class="repo-desc">${escapeHtml(r.description)}</div>` : ''}
+        </div>
+        <div class="repo-actions">
+          <button data-fullname="${escapeHtml(r.fullName)}" class="add-result-btn">Add</button>
+        </div>
+      </div>
+      <div class="repo-stats">
+        <span>⭐ ${r.stars?.toLocaleString() ?? 0}</span>
+        ${r.language ? `<span>🔵 ${escapeHtml(r.language)}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  searchResults.querySelectorAll('.add-result-btn').forEach(btn => {
+    btn.addEventListener('click', () => addFromSearch(btn.dataset.fullname, btn));
+  });
+}
+
+async function addFromSearch(fullName, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Adding...';
+  try {
+    const res = await fetch('/api/repos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: fullName, tags: tagsInput.value.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to add repo');
+    btn.textContent = 'Added ✓';
+    loadRepos();
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Add';
+    alert(err.message);
+  }
+}
+
+repoInput.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+
+filterSearch.addEventListener('input', applyFilters);
+filterTag.addEventListener('change', applyFilters);
+filterSort.addEventListener('change', applyFilters);
+
+viewCardsBtn.addEventListener('click', () => setView('cards'));
+viewTableBtn.addEventListener('click', () => setView('table'));
+
+refreshAllBtn.addEventListener('click', async () => {
+  refreshAllBtn.disabled = true;
+  refreshAllBtn.textContent = 'Refreshing...';
+  refreshAllStatus.textContent = `Refreshing ${allRepos.length} repos — this can take a while...`;
+  refreshAllStatus.className = 'status-msg';
+
+  try {
+    const res = await fetch('/api/repos/refresh-all', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Refresh failed');
+
+    if (data.failed.length) {
+      const rateLimited = data.failed.some(f => /rate limit/i.test(f.error));
+      refreshAllStatus.textContent = rateLimited
+        ? `Refreshed ${data.refreshed} of ${data.total} — stopped early due to GitHub's rate limit. Try the rest again later.`
+        : `Refreshed ${data.refreshed} of ${data.total} — ${data.failed.length} failed.`;
+      refreshAllStatus.className = 'status-msg error';
+    } else {
+      refreshAllStatus.textContent = `All ${data.refreshed} repos refreshed.`;
+      refreshAllStatus.className = 'status-msg ok';
+    }
+    loadRepos();
+  } catch (err) {
+    refreshAllStatus.textContent = err.message;
+    refreshAllStatus.className = 'status-msg error';
+  } finally {
+    refreshAllBtn.disabled = false;
+    refreshAllBtn.textContent = 'Refresh All';
+  }
+});
+viewCardsBtn.classList.toggle('active', currentView === 'cards');
+viewTableBtn.classList.toggle('active', currentView === 'table');
+
+loadRepos();
+</script>
+</body>
+</html>
